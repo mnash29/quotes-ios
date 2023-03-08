@@ -54,7 +54,7 @@ class QuoteTableViewController: UITableViewController {
         if isPurchased() {
             return quotesToShow.count
         }
-        
+
         return quotesToShow.count + 1
     }
 
@@ -104,6 +104,8 @@ class QuoteTableViewController: UITableViewController {
 
     func showPremiumQuotes() {
 
+        UserDefaults.standard.set(true, forKey: K.productID)
+
         quotesToShow.append(contentsOf: premiumQuotes)
         tableView.reloadData()
     }
@@ -113,7 +115,7 @@ class QuoteTableViewController: UITableViewController {
     }
 
     @IBAction func restorePressed(_ sender: UIBarButtonItem) {
-
+        SKPaymentQueue.default().restoreCompletedTransactions()
     }
 
 }
@@ -135,11 +137,16 @@ extension QuoteTableViewController: SKPaymentTransactionObserver {
                 print("Transaction successful")
 
                 showPremiumQuotes()
-                UserDefaults.standard.set(true, forKey: K.productID)
 
                 SKPaymentQueue.default().finishTransaction(transaction)
             case .restored:
                 print("Transaction restored")
+
+                showPremiumQuotes()
+
+                navigationItem.setRightBarButton(nil, animated: true)
+
+                SKPaymentQueue.default().finishTransaction(transaction)
             case .deferred:
                 print("Transaction deferred")
             default:
