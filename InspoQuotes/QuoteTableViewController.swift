@@ -32,6 +32,10 @@ class QuoteTableViewController: UITableViewController {
         super.viewDidLoad()
 
         SKPaymentQueue.default().add(self)
+
+        if isPurchased() {
+            showPremiumQuotes()
+        }
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -47,6 +51,10 @@ class QuoteTableViewController: UITableViewController {
     // MARK: - Table view data source
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        if isPurchased() {
+            return quotesToShow.count
+        }
+        
         return quotesToShow.count + 1
     }
 
@@ -57,6 +65,8 @@ class QuoteTableViewController: UITableViewController {
         if indexPath.row < quotesToShow.count {
             cell.textLabel?.text = quotesToShow[indexPath.row]
             cell.textLabel?.numberOfLines = 0
+            cell.accessoryType = .none
+            cell.textLabel?.textColor = UIColor.black
         } else {
             cell.textLabel?.text = "Get More Quotes"
             cell.textLabel?.textColor = UIColor.systemTeal
@@ -79,6 +89,7 @@ class QuoteTableViewController: UITableViewController {
 
     // MARK: - In-App Purchase Methods
 
+    /// Checks that user can make payments and adds payment request to queue
     func buyPremiumQuotes() {
 
         if SKPaymentQueue.canMakePayments() {
@@ -91,6 +102,16 @@ class QuoteTableViewController: UITableViewController {
         }
     }
 
+    func showPremiumQuotes() {
+
+        quotesToShow.append(contentsOf: premiumQuotes)
+        tableView.reloadData()
+    }
+
+    func isPurchased() -> Bool {
+        return UserDefaults.standard.bool(forKey: K.productID)
+    }
+
     @IBAction func restorePressed(_ sender: UIBarButtonItem) {
 
     }
@@ -101,17 +122,32 @@ class QuoteTableViewController: UITableViewController {
 
 extension QuoteTableViewController: SKPaymentTransactionObserver {
 
+    /// Loops through transactions in queue and processes each transaction state. Method is automatically called
+    /// by SKPaymentQueue when one or more transactions have been updated.
     func paymentQueue(_ queue: SKPaymentQueue, updatedTransactions transactions: [SKPaymentTransaction]) {
 
         for transaction in transactions {
 
             switch transaction.transactionState {
+            case .purchasing:
+                print("Completing transaction")
             case .purchased:
                 print("Transaction successful")
-            case .failed:
-                print("Transaction failed")
+
+                showPremiumQuotes()
+                UserDefaults.standard.set(true, forKey: K.productID)
+
+                SKPaymentQueue.default().finishTransaction(transaction)
+            case .restored:
+                print("Transaction restored")
+            case .deferred:
+                print("Transaction deferred")
             default:
-                print("Error processing payment")
+                if let error = transaction.error {
+                    let errorDescription = error.localizedDescription
+                    print("Error processing payment, \(errorDescription)")
+                }
+                SKPaymentQueue.default().finishTransaction(transaction)
             }
         }
     }
